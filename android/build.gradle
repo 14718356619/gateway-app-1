@@ -1,0 +1,4 @@
+// 顶层构建文件（Android Studio 打开即用）
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}

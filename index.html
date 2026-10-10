@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#141416">
+<title>网关智控</title>
+<style>
+:root{
+  --bg0:#141416; --bg1:#1C1C1E; --card:#2C2C2E; --card2:#3A3A3C;
+  --line:#3d3d40; --txt:#F2F2F7; --txt2:#98989F; --txt3:#6B6B70;
+  --green:#30D158; --red:#FF375F; --cyan:#00C7BE; --amber:#FFD60A; --blue:#0A84FF;
+  --r-card:20px; --r-btn:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:Inter,"SF Pro Text","PingFang SC","Noto Sans SC",system-ui,sans-serif;
+  background:linear-gradient(180deg,var(--bg0) 0%,var(--bg1) 100%);
+  color:var(--txt);font-size:16px;line-height:1.5;
+  max-width:480px;margin:0 auto;min-height:100vh;
+  display:flex;flex-direction:column;overflow-x:hidden;
+}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.kicker{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3)}
+button{font-family:inherit;border:none;background:none;color:inherit;cursor:pointer}
+input,select{font-family:inherit}
+svg{display:block}
+
+/* ---------- 连接屏 ---------- */
+#screen-connect{flex:1;display:flex;flex-direction:column;padding:32px 20px 28px;gap:20px}
+.logo-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:26px 0 8px}
+.logo-ring{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 32% 28%,#3A3A3C,#232325);box-shadow:0 8px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+.logo-title{font-size:24px;font-weight:600;letter-spacing:-.015em}
+.logo-sub{font-size:13px;color:var(--txt2)}
+.conn-card{background:var(--card);border-radius:var(--r-card);padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:var(--txt2);letter-spacing:.04em}
+.field input{background:var(--bg1);border:1px solid var(--line);border-radius:12px;padding:12px 14px;color:var(--txt);font-size:16px;outline:none;transition:border-color .15s}
+.field input:focus{border-color:var(--cyan)}
+.row2{display:flex;gap:12px}.row2 .field{flex:1}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;border-radius:var(--r-btn);
+  font-size:16px;font-weight:600;transition:transform .1s,opacity .15s}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--cyan);color:#04211F}
+.btn-ghost{background:var(--card2);color:var(--txt)}
+.btn-danger{background:rgba(255,55,95,.14);color:var(--red)}
+.btn:disabled{opacity:.5;pointer-events:none}
+.conn-msg{font-size:13px;min-height:18px;color:var(--txt2);text-align:center}
+.conn-msg.err{color:var(--red)} .conn-msg.ok{color:var(--green)}
+.saved-list{display:flex;flex-direction:column;gap:8px}
+.saved-item{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:12px 14px}
+.saved-item .si-body{flex:1;min-width:0}
+.saved-item .si-name{font-size:15px;font-weight:600}
+.saved-item .si-sub{font-size:12px;color:var(--txt2)}
+.si-del{padding:8px;color:var(--txt3)}
+
+/* ---------- 主屏 ---------- */
+#screen-main{flex:1;display:none;flex-direction:column;min-height:100vh}
+.app-header{position:sticky;top:0;z-index:20;padding:14px 20px 10px;
+  background:linear-gradient(180deg,rgba(20,20,22,.96),rgba(20,20,22,.85));backdrop-filter:blur(16px)}
+.header-row{display:flex;align-items:center;gap:10px}
+.header-title{font-size:20px;font-weight:600;letter-spacing:-.015em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{width:40px;height:40px;border-radius:12px;background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--txt2);flex:none}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn.spin svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gw-status{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--txt2)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--txt3);flex:none}
+.dot.on{background:var(--green);box-shadow:0 0 8px rgba(48,209,88,.7)}
+.dot.off{background:var(--red);box-shadow:0 0 8px rgba(255,55,95,.6)}
+.dot.warn{background:var(--amber)}
+.net-pill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:100px;background:var(--card);font-size:11px;color:var(--txt2)}
+.net-pill b{font-weight:600}
+
+.page{flex:1;padding:14px 16px 96px;display:none;flex-direction:column;gap:12px}
+.page.active{display:flex}
+
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-top:4px}
+.sec-head .count{font-size:12px;color:var(--txt2)}
+
+/* 设备卡 */
+.dev-card{background:var(--card);border-radius:var(--r-card);padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.45);transition:opacity .2s}
+.dev-card.offline{opacity:.55}
+.dev-head{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.dev-ico{width:44px;height:44px;border-radius:14px;background:var(--card2);display:flex;align-items:center;justify-content:center;flex:none;color:var(--cyan)}
+.dev-card.offline .dev-ico{color:var(--txt3)}
+.dev-body{flex:1;min-width:0}
+.dev-name{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dev-sub{font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:6px}
+.dev-status{font-size:12px;font-weight:600;padding:3px 10px;border-radius:100px;flex:none}
+.dev-status.on{color:#0b3d1d;background:var(--green)}
+.dev-status.off{color:#3d0d17;background:rgba(255,55,95,.35)}
+.dev-actions{margin-top:12px;display:flex;flex-direction:column;gap:10px}
+.ch-row{display:flex;align-items:center;gap:10px;background:var(--bg1);border-radius:14px;padding:10px 14px}
+.ch-label{flex:1;font-size:14px;font-weight:500}
+.ch-val{font-size:13px;color:var(--txt2)}
+.telemetry{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:12px}
+.tele-item{background:var(--bg1);border-radius:12px;padding:8px 10px}
+.tele-k{font-size:10px;color:var(--txt3);letter-spacing:.05em;text-transform:uppercase}
+.tele-v{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.tele-v small{font-size:10px;font-weight:500;color:var(--txt2);margin-left:2px}
+.pending{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--amber);margin-left:6px;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+
+/* 开关 */
+.switch{position:relative;width:52px;height:31px;border-radius:100px;background:var(--card2);transition:background .2s;flex:none}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.switch.on{background:var(--green)}
+.switch.on::after{transform:translateX(21px)}
+.switch:disabled{opacity:.5}
+
+/* 滑条 */
+.slider-row{display:flex;flex-direction:column;gap:6px;background:var(--bg1);border-radius:14px;padding:12px 14px}
+.slider-top{display:flex;justify-content:space-between;align-items:center}
+.slider-top .ch-label{flex:none}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:100px;background:var(--card2);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--cyan);box-shadow:0 2px 8px rgba(0,199,190,.5);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border:none;border-radius:50%;background:var(--cyan)}
+
+/* 场景卡 */
+.scn-card{background:var(--card);border-radius:var(--r-card);padding:16px;display:flex;align-items:center;gap:12px}
+.scn-ico{width:44px;height:44px;border-radius:14px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--amber);flex:none}
+.scn-body{flex:1;min-width:0}
+.scn-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scn-remark{font-size:12px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scn-run{min-width:76px;min-height:40px;border-radius:100px;background:var(--cyan);color:#04211F;font-size:14px;font-weight:600;padding:0 16px}
+.scn-run:disabled{opacity:.5}
+.scn-badge{font-size:11px;padding:2px 8px;border-radius:100px;flex:none}
+.scn-badge.on{color:#0b3d1d;background:rgba(48,209,88,.9)}
+.scn-badge.off{color:var(--txt2);background:var(--card2)}
+
+/* 设置页 */
+.set-card{background:var(--card);border-radius:var(--r-card);padding:16px;display:flex;flex-direction:column;gap:2px}
+.set-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.set-row:last-child{border-bottom:none}
+.set-k{flex:1;font-size:14px}
+.set-v{font-size:13px;color:var(--txt2);max-width:55%;text-align:right;word-break:break-all;font-variant-numeric:tabular-nums}
+.help-card{background:var(--card);border-radius:var(--r-card);padding:16px;font-size:13px;color:var(--txt2);line-height:1.7}
+.help-card b{color:var(--txt);font-weight:600}
+.help-card h4{font-size:14px;color:var(--txt);margin:10px 0 4px}
+.help-card h4:first-child{margin-top:0}
+
+.empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:60px 0;color:var(--txt3);font-size:14px}
+
+/* 底部导航 */
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:30;
+  display:flex;background:rgba(28,28,30,.92);backdrop-filter:blur(20px);border-top:1px solid var(--line);
+  padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:var(--txt3);font-size:11px;font-weight:500;border-radius:12px;transition:color .15s}
+.tab-item.active{color:var(--cyan)}
+
+/* Toast */
+#toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(16px);z-index:99;
+  background:#000;color:#fff;padding:10px 18px;border-radius:100px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;max-width:86%;text-align:center}
+#toast.show{opacity:.92;transform:translateX(-50%) translateY(0)}
+
+.spin-loader{width:18px;height:18px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@media (min-width:520px){ body{border-left:1px solid #26262a;border-right:1px solid #26262a} }
+</style>
+</head>
+<body>
+
+<!-- ============ 连接/绑定屏 ============ -->
+<div id="screen-connect">
+  <div class="logo-wrap">
+    <div class="logo-ring">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00C7BE" stroke-width="1.6" stroke-linecap="round">
+        <path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M8.5 15.9a6 6 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1.4" fill="#00C7BE" stroke="none"/>
+      </svg>
+    </div>
+    <div class="logo-title">网关智控</div>
+    <div class="logo-sub">请将手机接入与网关主机相同的 WiFi 网段</div>
+  </div>
+
+  <div class="saved-list" id="savedList"></div>
+
+  <div class="conn-card">
+    <div class="kicker">Gateway Binding</div>
+    <div class="row2">
+      <div class="field" style="flex:2"><label>网关 IP 地址</label><input id="inIp" type="text" placeholder="例如 192.168.1.100" autocomplete="off"></div>
+      <div class="field"><label>端口</label><input id="inPort" type="text" inputmode="numeric" value="8080"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>用户名</label><input id="inUser" type="text" value="user" autocomplete="off"></div>
+      <div class="field"><label>密码</label><input id="inPass" type="password" value="password"></div>
+    </div>
+    <button class="btn btn-primary" id="btnConnect">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M8.5 15.9a6 6 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1.4" fill="currentColor" stroke="none"/></svg>
+      连接并绑定网关
+    </button>
+    <button class="btn btn-ghost" id="btnDemo">演示模式（无需硬件）</button>
+    <div class="conn-msg" id="connMsg"></div>
+  </div>
+</div>
+
+<!-- ============ 主屏 ============ -->
+<div id="screen-main">
+  <header class="app-header">
+    <div class="header-row">
+      <div class="header-title" id="hTitle">网关智控</div>
+      <button class="icon-btn" id="btnRefresh" title="刷新">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      </button>
+      <button class="icon-btn" id="btnReloadDev" title="重载场景与设备" style="display:none">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>
+      </button>
+    </div>
+    <div class="gw-status">
+      <span class="dot" id="gwDot"></span><span id="gwStatusTxt">未连接</span>
+      <span class="net-pill" style="margin-left:auto"><b id="netMode">-</b></span>
+    </div>
+  </header>
+
+  <main class="page active" id="page-dev">
+    <div class="sec-head"><span class="kicker">Devices</span><span class="count" id="devCount"></span></div>
+    <div id="devList" style="display:flex;flex-direction:column;gap:12px"></div>
+  </main>
+
+  <main class="page" id="page-scn">
+    <div class="sec-head"><span class="kicker">Scenarios</span><span class="count" id="scnCount"></span></div>
+    <div id="scnList" style="display:flex;flex-direction:column;gap:12px"></div>
+  </main>
+
+  <main class="page" id="page-set">
+    <div class="sec-head"><span class="kicker">Gateway Info</span></div>
+    <div class="set-card" id="gwInfoCard"></div>
+    <div class="sec-head"><span class="kicker">Connection</span></div>
+    <div class="set-card">
+      <div class="set-row"><span class="set-k">连接方式</span><span class="set-v" id="setMode">-</span></div>
+      <div class="set-row"><span class="set-k">网关地址</span><span class="set-v" id="setAddr">-</span></div>
+      <div class="set-row"><span class="set-k">实时推送通道</span><span class="set-v" id="setWs">-</span></div>
+      <div class="set-row"><span class="set-k">轮询周期</span><span class="set-v">5 秒（推送不可用时自动启用）</span></div>
+    </div>
+    <button class="btn btn-ghost" id="btnEditConn">修改网关配置</button>
+    <button class="btn btn-danger" id="btnUnbind">解除绑定</button>
+    <div class="help-card">
+      <h4>使用提示</h4>
+      <b>1.</b> 手机需与网关主机处于同一 WiFi 网段（如网关 192.168.1.x，手机也应为 192.168.1.x）。<br>
+      <b>2.</b> 默认认证为 user / password，与协议文档一致，可在绑定页修改。<br>
+      <b>3.</b> 若浏览器直连受跨域(CORS)限制，请使用 Android 壳工程打包的 APK（WebView 已放开该限制）。<br>
+      <b>4.</b> 页面需以 http(s) 或本地文件方式打开；不要通过 https 页面访问 http 网关（会被浏览器拦截）。<br>
+      <b>5.</b> 设备长按名称可重命名（保存在本机）。
+    </div>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab-item active" data-tab="dev">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>
+      设备</button>
+    <button class="tab-item" data-tab="scn">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12L13 2z"/></svg>
+      场景</button>
+    <button class="tab-item" data-tab="set">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+      设置</button>
+  </nav>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* =====================================================
+ * 网关智控 · HTTP协议网关主机 客户端
+ * 协议: http://<IP>:8080/api/v1  Basic Auth (user/password)
+ * ===================================================== */
+const $=s=>document.querySelector(s);
+const API_BASE="/api/v1";
+const WS_PATH="/websocket/v1/event";
+const LS_CFG="gw.cfg", LS_NAMES="gw.names";
+
+/* ---------- 资源 TAG 元数据（依据协议 Websocket 事件上报章节） ---------- */
+const TAG_META={
+  switch:{n:"开关",c:"switch"},
+  dc_dimmer:{n:"0-10V 调光",c:"slider",unit:"%"},
+  pwm_dimmer:{n:"PWM 调光",c:"slider",unit:"%"},
+  indicator:{n:"指示灯",c:"slider"},
+  tilt:{n:"倾斜度",c:"slider",unit:"°"},
+  voltage:{n:"电压",ro:1,unit:"V"},current:{n:"电流",ro:1,unit:"A"},
+  power_p:{n:"有功功率",ro:1,unit:"W"},power_q:{n:"无功功率",ro:1,unit:"Var"},power_s:{n:"视在功率",ro:1,unit:"VA"},
+  power_factor:{n:"功率因数",ro:1},energy_p:{n:"有功电能",ro:1,unit:"kWh"},energy_q:{n:"无功电能",ro:1,unit:"kVarh"},
+  frequency:{n:"频率",ro:1,unit:"Hz"},temperature:{n:"温度",ro:1,unit:"°C"},humidity:{n:"湿度",ro:1,unit:"%"},
+  illuminance:{n:"光照度",ro:1,unit:"Lux"},noise:{n:"环境噪声",ro:1,unit:"dB"},
+  pm2_5:{n:"PM2.5",ro:1,unit:"μg/m³"},pm10:{n:"PM10",ro:1,unit:"μg/m³"},
+  atmospheric_pressure:{n:"大气压强",ro:1,unit:"kPa"},leakage_current:{n:"漏电电流",ro:1,unit:"mA"},
+  leakage:{n:"漏电状态",ro:1,map:{"0":"无漏电","1":"漏电"}},
+  snr:{n:"信号强度",ro:1},di:{n:"DI 输入",ro:1},do:{n:"DO 输出",ro:1},
+  ai:{n:"AI 输入",ro:1},ao:{n:"AO 输出",ro:1},key:{n:"按键",ro:1},key_event:{n:"按键状态",ro:1},
+  knob:{n:"旋钮",ro:1},character:{n:"字符显示",ro:1},
+  relay_close_cnt:{n:"闭合次数",ro:1},relay_open_cnt:{n:"断开次数",ro:1},
+  relay_close_time:{n:"闭合时长",ro:1,unit:"s"},relay_open_time:{n:"断开时长",ro:1,unit:"s"},
+  system_info:{n:"系统信息",ro:1,hide:1},
+};
+const CH_TAG_ORDER=["switch","dc_dimmer","pwm_dimmer","indicator","tilt"];
+
+/* ---------- 全局状态 ---------- */
+const S={
+  mode:null,            // 'live' | 'demo'
+  cfg:null,             // {ip,port,user,pass}
+  gw:{},                // /system/info data
+  devices:[],           // [{id,status,resource,comm_err_cnt}]
+  scenarios:[],
+  names:{},             // 本机设备重命名
+  ws:null, wsState:"off", // off|connecting|open|sim
+  pollTimer:null, demoTimer:null,
+  pending:new Set(),    // 乐观更新中的 key: devId:tag:chId
+  lastOk:0,
+};
+
+/* ================= 演示模式 Mock ================= */
+const MOCK={
+  info:{version:"v1.7.0",sn:"05010000001",gbus_enabled:"1",gwagent_uptime:"1231",sys_uptime:"2482165"},
+  devices:[
+    {id:"101",status:"online",resource:{switch:[{id:"1",value:"1"},{id:"2",value:"0"},{id:"3",value:"1"},{id:"4",value:"0"}]}},
+    {id:"102",status:"online",resource:{switch:[{id:"1",value:"0"},{id:"2",value:"0"}],dc_dimmer:[{id:"1",value:"45.00"},{id:"2",value:"80.00"}]}},
+    {id:"103",status:"online",resource:{voltage:[{id:"1",value:"220.10"}],current:[{id:"1",value:"0.12"}],power_p:[{id:"1",value:"26.40"}],power_factor:[{id:"1",value:"0.92"}],energy_p:[{id:"1",value:"3.45"}],temperature:[{id:"1",value:"26.50"}],humidity:[{id:"1",value:"58"}]}},
+    {id:"104",status:"offline",resource:{switch:[{id:"1",value:"0"}]}},
+  ],
+  scenarios:[
+    {id:"1",name:"每30秒开关一次回路",enabled:"1",delay:"2",remark:"定时循环演示",last_exec_time:"0"},
+    {id:"2",name:"开关开启更改面板颜色",enabled:"1",delay:"0",remark:"设备3开关1触发",last_exec_time:"0"},
+    {id:"3",name:"执行场景1",enabled:"1",delay:"0",remark:"设备2(面板)按键3触发",last_exec_time:"0"},
+    {id:"4",name:"全关灯光",enabled:"0",delay:"0",remark:"一键关闭全部开关回路",last_exec_time:"0"},
+  ],
+};
+function mockPatch(body){
+  const dev=MOCK.devices.find(d=>d.id===body.id); if(!dev)return{code:1,msg:"device not found"};
+  for(const tag in body.resource){
+    const list=dev.resource[tag]; if(!list)continue;
+    for(const ch of body.resource[tag]){
+      const t=list.find(x=>x.id===ch.id); if(t)t.value=ch.value;
+    }
+  }
+  return{code:0,msg:"ok",data:""};
+}
+function mockApi(path,method,body){
+  return new Promise(res=>setTimeout(()=>{
+    if(path==="/system/info")return res({code:0,msg:"ok",data:{...MOCK.info}});
+    if(path==="/device/resource"){
+      if(method==="PATCH"){const r=mockPatch(body);res(r);renderDevices();return;}
+      return res({code:0,msg:"ok",data:JSON.parse(JSON.stringify(MOCK.devices))});
+    }
+    if(path==="/scenario"){
+      if(method==="PATCH"){
+        const sc=MOCK.scenarios.find(s=>s.id===body.id); if(!sc)return res({code:1,msg:"scenario not found"});
+        if(body.value==="0"||body.value==="1")sc.enabled=body.value;
+        return res({code:0,msg:"ok",data:""});
+      }
+      return res({code:0,msg:"ok",data:JSON.parse(JSON.stringify(MOCK.scenarios))});
+    }
+    res({code:1,msg:"unknown endpoint"});
+  },260));
+}
+/* 演示：遥测数据轻微漂移，模拟实时上报 */
+function demoTick(){
+  const d=MOCK.devices.find(x=>x.id==="103"); if(!d)return;
+  const v=+d.resource.voltage[0].value, c=+d.resource.current[0].value, p=+d.resource.power_p[0].value;
+  d.resource.voltage[0].value=(v+(Math.random()-.5)*.6).toFixed(2);
+  d.resource.current[0].value=Math.max(.02,c+(Math.random()-.5)*.05).toFixed(2);
+  d.resource.power_p[0].value=Math.max(2,p+(Math.random()-.5)*3).toFixed(2);
+  renderDevices(true);
+}
+
+/* ================= API 层 ================= */
+async function api(path,{method="GET",body=null,timeout=6000}={}){
+  if(S.mode==="demo")return mockApi(path,method,body);
+  const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),timeout);
+  try{
+    const auth=btoa(`${S.cfg.user}:${S.cfg.pass}`);
+    const r=await fetch(`http://${S.cfg.ip}:${S.cfg.port}${API_BASE}${path}`,{
+      method,signal:ctl.signal,
+      headers:{"Authorization":"Basic "+auth,"Content-Type":"application/json"},
+      body:body?JSON.stringify(body):null});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    return await r.json();
+  }finally{clearTimeout(t);}
+}
+async function safeApi(path,opts){
+  try{const j=await api(path,opts);if(j.code!==0)throw new Error(j.msg||"code "+j.code);S.lastOk=Date.now();return j;}
+  catch(e){S.lastOk=0;throw e;}
+}
+
+/* ================= 绑定 / 连接 ================= */
+function loadSaved(){try{return JSON.parse(localStorage.getItem(LS_CFG))||null}catch(e){return null}}
+function loadNames(){try{return JSON.parse(localStorage.getItem(LS_NAMES))||{}}catch(e){return{}}}
+function saveCfg(c){localStorage.setItem(LS_CFG,JSON.stringify(c))}
+
+async function connect(cfg){
+  S.cfg=cfg;S.mode="live";
+  setMsg("正在连接网关…");
+  try{
+    const j=await safeApi("/system/info",{timeout:7000});
+    S.gw=j.data||{};
+    saveCfg(cfg);
+    enterMain();
+    return true;
+  }catch(e){
+    setMsg("连接失败："+(e.name==="AbortError"?"超时（检查 IP / 同一网段 / 网关防火墙）":e.message),true);
+    S.mode=null;return false;
+  }
+}
+function enterDemo(){
+  S.mode="demo";S.cfg={ip:"demo.local",port:"-",user:"user",pass:"-"};
+  S.gw={...MOCK.info};
+  setMsg("");enterMain();
+  S.wsState="sim";S.demoTimer=setInterval(demoTick,3000);
+  refreshAll();updateNet();
+  toast("已进入演示模式，数据为模拟网关");
+}
+async function refreshAll(){
+  await Promise.all([loadDevices().catch(()=>{}),loadScenarios().catch(()=>{})]);
+  updateNet();renderGwInfo();renderSettings();
+}
+function unbind(){
+  stopChannels();S.mode=null;S.cfg=null;S.devices=[];S.scenarios=[];S.gw={};
+  $("#screen-main").style.display="none";$("#screen-connect").style.display="flex";
+  renderSaved();setMsg("已解除绑定");
+}
+
+/* ================= 设备 ================= */
+async function loadDevices(){
+  const j=await safeApi("/device/resource");
+  S.devices=j.data||[];renderDevices();
+}
+async function loadScenarios(){
+  const j=await safeApi("/scenario");
+  S.scenarios=j.data||[];renderScenarios();
+}
+const devName=id=>S.names[id]||("设备 "+id);
+const ICONS={
+  switch:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="7" width="18" height="10" rx="5"/><circle cx="15.5" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg>',
+  light:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 1 3.7 10.7c-.7.6-.7 1.6-.7 2.3h-6c0-.7 0-1.7-.7-2.3A6 6 0 0 1 12 3z"/></svg>',
+  meter:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 14a8 8 0 1 1 16 0"/><path d="M12 14 15.5 9.5"/><path d="M3 18h18"/></svg>',
+  sensor:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4a1.5 1.5 0 0 1 1.5 1.5v8a4 4 0 1 1-3 0v-8A1.5 1.5 0 0 1 12 4z"/><path d="M12 13.5v4"/></svg>',
+  scene:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12L13 2z"/></svg>',
+};
+function devIcon(d){
+  const r=d.resource||{};
+  if(r.voltage||r.current||r.power_p)return ICONS.meter;
+  if(r.dc_dimmer||r.pwm_dimmer)return ICONS.light;
+  if(r.temperature||r.humidity||r.illuminance||r.pm2_5||r.noise)return ICONS.sensor;
+  return ICONS.switch;
+}
+function renderDevices(silent){
+  const box=$("#devList");if(!box)return;
+  const online=S.devices.filter(d=>d.status==="online").length;
+  $("#devCount").textContent=`${online}/${S.devices.length} 在线`;
+  if(!S.devices.length){box.innerHTML='<div class="empty">暂无设备，点击右上角刷新</div>';return;}
+  box.innerHTML=S.devices.map(d=>{
+    const isOn=d.status==="online";
+    let body="";
+    for(const tag of CH_TAG_ORDER){
+      const list=(d.resource||{})[tag];if(!list)continue;
+      const meta=TAG_META[tag];
+      if(tag==="switch"){
+        body+=list.map(ch=>{
+          const on=ch.value==="1";
+          const key=`${d.id}:${tag}:${ch.id}`;
+          const pend=S.pending.has(key);
+          return `<div class="ch-row"><span class="ch-label">开关通道 ${ch.id}${pend?'<span class="pending"></span>':''}</span>
+            <span class="ch-val num">${on?"已开启":"已关闭"}</span>
+            <button class="switch ${on?'on':''}" ${isOn?'':'disabled'} data-dev="${d.id}" data-tag="switch" data-ch="${ch.id}" aria-label="开关通道${ch.id}"></button></div>`;
+        }).join("");
+      }else{
+        body+=list.map(ch=>{
+          const key=`${d.id}:${tag}:${ch.id}`;
+          const pend=S.pending.has(key);
+          const val=pend?"…":(+ch.value).toFixed(0);
+          return `<div class="slider-row"><div class="slider-top">
+            <span class="ch-label">${meta.n} 通道 ${ch.id}${pend?'<span class="pending"></span>':''}</span>
+            <span class="ch-val num">${val}${meta.unit||""}</span></div>
+            <input type="range" min="0" max="100" value="${+ch.value||0}" ${isOn?'':'disabled'} data-dev="${d.id}" data-tag="${tag}" data-ch="${ch.id}"></div>`;
+        }).join("");
+      }
+    }
+    /* 只读遥测 */
+    const tels=[];
+    for(const tag in (d.resource||{})){
+      const meta=TAG_META[tag];if(!meta||!meta.ro||meta.hide)continue;
+      for(const ch of d.resource[tag]){
+        const v=meta.map?meta.map[ch.value]||ch.value:ch.value;
+        tels.push(`<div class="tele-item"><div class="tele-k">${meta.n}</div><div class="tele-v">${v}${meta.unit?`<small>${meta.unit}</small>`:""}</div></div>`);
+      }
+    }
+    if(tels.length)body+=`<div class="telemetry">${tels.join("")}</div>`;
+    return `<div class="dev-card ${isOn?'':'offline'}">
+      <div class="dev-head">
+        <div class="dev-ico">${devIcon(d)}</div>
+        <div class="dev-body"><div class="dev-name" data-rename="${d.id}" title="长按重命名">${esc(devName(d.id))}</div>
+        <div class="dev-sub num">ID ${d.id}${d.comm_err_cnt?` · 通讯错误 ${d.comm_err_cnt}`:""}</div></div>
+        <span class="dev-status ${isOn?'on':'off'}">${isOn?"在线":"离线"}</span>
+      </div>
+      ${body?`<div class="dev-actions">${body}</div>`:""}
+    </div>`;
+  }).join("");
+}
+/* 开关控制（乐观更新 → PATCH → 事件/轮询校正） */
+async function sendControl(devId,tag,chId,value){
+  const key=`${devId}:${tag}:${chId}`;
+  const dev=S.devices.find(d=>d.id===devId);
+  let old=null;
+  if(dev){const list=(dev.resource||{})[tag]||[];const t=list.find(x=>x.id===chId);if(t){old=t.value;t.value=value;}}
+  S.pending.add(key);renderDevices(true);
+  try{
+    await safeApi("/device/resource",{method:"PATCH",body:{id:String(devId),resource:{[tag]:[{id:String(chId),value:String(value)}]}}});
+  }catch(e){
+    if(dev&&old!==null){const t=((dev.resource||{})[tag]||[]).find(x=>x.id===chId);if(t)t.value=old;}
+    toast("指令下发失败："+e.message);
+  }finally{S.pending.delete(key);renderDevices(true);updateNet();}
+}
+
+/* ================= 场景 ================= */
+function renderScenarios(){
+  const box=$("#scnList");if(!box)return;
+  $("#scnCount").textContent=S.scenarios.length+" 个";
+  if(!S.scenarios.length){box.innerHTML='<div class="empty">暂无场景</div>';return;}
+  box.innerHTML=S.scenarios.map(s=>{
+    const on=s.enabled==="1";
+    return `<div class="scn-card">
+      <div class="scn-ico">${ICONS.scene}</div>
+      <div class="scn-body"><div class="scn-name">${esc(s.name)}</div>
+      <div class="scn-remark">${esc(s.remark||"")}${s.delay&&s.delay!=="0"?` · 延时 ${s.delay}s`:""}</div></div>
+      <span class="scn-badge ${on?'on':'off'}">${on?"启用":"禁用"}</span>
+      <button class="scn-run" data-scn="${s.id}">执行</button>
+    </div>`;
+  }).join("");
+}
+async function runScenario(id){
+  toast("正在执行场景…");
+  try{
+    await safeApi("/scenario",{method:"PATCH",body:{id:String(id),value:"2"}});
+    toast("场景执行指令已下发");
+    loadScenarios().catch(()=>{});
+  }catch(e){toast("执行失败："+e.message);}
+}
+
+/* ================= WebSocket 实时上报 ================= */
+function wsConnect(){
+  if(S.mode!=="live")return;
+  wsSet("connecting");
+  const{ip,port,user,pass}=S.cfg;
+  const urls=[`ws://${user}:${pass}@${ip}:${port}${WS_PATH}`,`ws://${ip}:${port}${WS_PATH}`];
+  let i=0;
+  const tryNext=()=>{
+    if(i>=urls.length||S.mode!=="live"){wsSet("off");ensurePoll();return;}
+    let sock;
+    try{sock=new WebSocket(urls[i++]);}catch(e){wsSet("off");ensurePoll();return;}
+    S.ws=sock;
+    const guard=setTimeout(()=>{if(sock.readyState!==1)sock.close();},6000);
+    sock.onopen=()=>{clearTimeout(guard);wsSet("open");ensurePoll();};
+    sock.onmessage=ev=>{try{handleEvent(JSON.parse(ev.data))}catch(e){}};
+    sock.onclose=sock.onerror=()=>{if(S.ws===sock){wsSet("off");ensurePoll();setTimeout(tryNext,8000);}};
+  };
+  tryNext();
+}
+function wsSet(st){
+  S.wsState=st;updateNet();renderSettings();
+}
+function handleEvent(ev){
+  const{type,data}=ev||{};
+  if(type==="device.status"&&data){
+    const d=S.devices.find(x=>x.id===String(data.id));
+    if(d){d.status=data.status;renderDevices(true);}
+  }else if(type==="device.resource"&&data){
+    const d=S.devices.find(x=>x.id===String(data.id));
+    if(d){
+      d.resource=d.resource||{};
+      for(const tag in (data.resource||{}))d.resource[tag]=data.resource[tag];
+      for(const key of[...S.pending]){if(key.startsWith(String(data.id)+":"))S.pending.delete(key);}
+      renderDevices(true);
+    }
+  }else if(type==="scenario"&&data){
+    const sc=S.scenarios.find(x=>x.id===String(data.id));
+    if(sc){if(data.value==="0"||data.value==="1")sc.enabled=data.value;renderScenarios();}
+  }
+}
+/* 轮询兜底（WS 未就绪时每 5s 拉取） */
+function ensurePoll(){
+  if(S.pollTimer)return;
+  S.pollTimer=setInterval(()=>{
+    if(S.mode!=="live"||S.wsState==="open")return;
+    loadDevices().then(updateNet).catch(()=>{updateNet();});
+  },5000);
+}
+function stopChannels(){
+  if(S.pollTimer){clearInterval(S.pollTimer);S.pollTimer=null;}
+  if(S.demoTimer){clearInterval(S.demoTimer);S.demoTimer=null;}
+  if(S.ws){try{S.ws.onclose=null;S.ws.close()}catch(e){}S.ws=null;}
+  wsSet("off");
+}
+
+/* ================= 渲染：头部 / 设置 ================= */
+function updateNet(){
+  const dot=$("#gwDot"),txt=$("#gwStatusTxt");
+  if(S.mode==="demo"){dot.className="dot on";txt.textContent="演示模式 · 模拟网关在线";$("#netMode").textContent="DEMO";}
+  else if(S.wsState==="open"){dot.className="dot on";txt.textContent="网关在线 · 实时推送已连接";$("#netMode").textContent="WebSocket";}
+  else if(S.lastOk){dot.className="dot warn";txt.textContent="网关在线 · 轮询同步中";$("#netMode").textContent="轮询 5s";}
+  else if(S.mode==="live"){dot.className="dot off";txt.textContent="网关连接中断，自动重试…";$("#netMode").textContent="-";}
+  else{dot.className="dot";txt.textContent="未连接";$("#netMode").textContent="-";}
+  $("#setWs").textContent=S.mode==="demo"?"模拟推送":(S.wsState==="open"?"WebSocket 已连接":S.wsState==="connecting"?"连接中…":"不可用（轮询兜底）");
+}
+function fmtUptime(s){s=+s||0;const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return(d?d+"天":"")+h+"小时"+m+"分";}
+function renderGwInfo(){
+  const g=S.gw||{};
+  $("#gwInfoCard").innerHTML=[
+    ["软件版本",g.version],["网关序列号",g.sn],["GBUS 总线",g.gbus_enabled==="1"?"已启用":"未启用"],
+    ["gwagent 运行",fmtUptime(g.gwagent_uptime)],["系统运行",fmtUptime(g.sys_uptime)],
+  ].map(([k,v])=>`<div class="set-row"><span class="set-k">${k}</span><span class="set-v num">${esc(v??"-")}</span></div>`).join("");
+  $("#hTitle").textContent=S.mode==="demo"?"网关智控（演示）":devName("GW").replace("设备 GW","网关智控")+(g.sn?" · "+g.sn:"");
+  $("#setMode").textContent=S.mode==="demo"?"演示模式":"HTTP Basic + 局域网直连";
+  $("#setAddr").textContent=S.mode==="demo"?"demo.local":`${S.cfg?.ip}:${S.cfg?.port}`;
+}
+function renderSettings(){renderGwInfo();updateNet();}
+
+/* ================= 屏幕与导航 ================= */
+function enterMain(){
+  $("#screen-connect").style.display="none";
+  $("#screen-main").style.display="flex";
+  switchTab("dev");
+}
+function switchTab(t){
+  document.querySelectorAll(".tab-item").forEach(b=>b.classList.toggle("active",b.dataset.tab===t));
+  document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+t));
+  $("#btnReloadDev").style.display=t==="scn"?"":"none";
+}
+function toast(msg){
+  const t=$("#toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("show"),2200);
+}
+function setMsg(m,err){const el=$("#connMsg");el.textContent=m||"";el.className="conn-msg"+(err?" err":m?" ok":"");}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* ================= 绑定页历史 ================= */
+function renderSaved(){
+  const cfg=loadSaved(),box=$("#savedList");
+  if(!cfg||!cfg.ip){box.innerHTML="";return;}
+  box.innerHTML=`<div class="saved-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00C7BE" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="14" rx="3"/><path d="M7 9h4M7 13h7"/></svg>
+    <div class="si-body"><div class="si-name">上次绑定的网关</div><div class="si-sub num">${esc(cfg.ip)}:${esc(cfg.port)} · ${esc(cfg.user)}</div></div>
+    <button class="btn btn-primary" id="btnQuick" style="min-height:38px;min-width:78px;font-size:13px;padding:0 12px">连接</button>
+    <button class="si-del" id="btnDelSaved" title="删除">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>
+  </div>`;
+  $("#btnQuick")?.addEventListener("click",()=>connect({...cfg}));
+  $("#btnDelSaved")?.addEventListener("click",()=>{localStorage.removeItem(LS_CFG);renderSaved();});
+  $("#inIp").value=cfg.ip;$("#inPort").value=cfg.port;$("#inUser").value=cfg.user;$("#inPass").value=cfg.pass;
+}
+
+/* ================= 事件绑定 ================= */
+$("#btnConnect").addEventListener("click",()=>{
+  const ip=$("#inIp").value.trim(),port=$("#inPort").value.trim()||"8080";
+  const user=$("#inUser").value.trim()||"user",pass=$("#inPass").value;
+  if(!/^\d{1,3}(\.\d{1,3}){3}$|^[\w.-]+$/.test(ip)){setMsg("请输入有效的网关 IP 地址",true);return;}
+  $("#btnConnect").disabled=true;setMsg("正在连接网关…");
+  connect({ip,port,user,pass}).finally(()=>$("#btnConnect").disabled=false);
+});
+$("#btnDemo").addEventListener("click",enterDemo);
+$("#btnRefresh").addEventListener("click",e=>{
+  const b=e.currentTarget;b.classList.add("spin");
+  refreshAll().finally(()=>setTimeout(()=>b.classList.remove("spin"),500));
+});
+$("#btnReloadDev").addEventListener("click",async()=>{
+  if(S.mode!=="live"&&S.mode!=="demo")return;
+  try{await safeApi("/scenario/reload",{method:"PUT"});toast("场景已重载");loadScenarios().catch(()=>{});}
+  catch(e){toast("重载失败："+e.message);}
+});
+document.querySelectorAll(".tab-item").forEach(b=>b.addEventListener("click",()=>switchTab(b.dataset.tab)));
+$("#btnUnbind").addEventListener("click",unbind);
+$("#btnEditConn").addEventListener("click",()=>{
+  if(!S.cfg)return;stopChannels();
+  $("#inIp").value=S.cfg.ip;$("#inPort").value=S.cfg.port;$("#inUser").value=S.cfg.user;$("#inPass").value=S.cfg.pass;
+  $("#screen-main").style.display="none";$("#screen-connect").style.display="flex";setMsg("");
+});
+/* 委托：开关 / 滑条 / 场景 / 重命名 */
+let sliderDebounce=null;
+document.addEventListener("click",e=>{
+  const sw=e.target.closest(".switch");
+  if(sw&&!sw.disabled){
+    const on=sw.classList.contains("on");
+    sendControl(sw.dataset.dev,sw.dataset.tag,sw.dataset.ch,on?"0":"1");return;
+  }
+  const run=e.target.closest(".scn-run");
+  if(run&&!run.disabled){run.disabled=true;runScenario(run.dataset.scn).finally(()=>run.disabled=false);return;}
+  const nm=e.target.closest("[data-rename]");
+  if(nm){
+    const id=nm.dataset.rename,cur=S.names[id]||"";
+    const v=prompt("重命名设备（留空恢复默认）：",cur);
+    if(v!==null){if(v.trim())S.names[id]=v.trim();else delete S.names[id];
+      localStorage.setItem(LS_NAMES,JSON.stringify(S.names));renderDevices(true);}
+  }
+});
+document.addEventListener("input",e=>{
+  const rg=e.target.closest('input[type=range][data-dev]');if(!rg)return;
+  clearTimeout(sliderDebounce);
+  sliderDebounce=setTimeout(()=>sendControl(rg.dataset.dev,rg.dataset.tag,rg.dataset.ch,String(+rg.value)),350);
+});
+document.addEventListener("change",e=>{ /* 立即响应滑条松手 */ });
+
+/* ================= 启动 ================= */
+(async function init(){
+  S.names=loadNames();
+  renderSaved();
+  /* 验证辅助：?demo=1&tab=scn 直达指定页 */
+  const m=location.search.match(/tab=(\w+)/);
+  if(location.search.includes("demo=1")){enterDemo();if(m)switchTab(m[1]);return;}
+  const cfg=loadSaved();
+  if(cfg&&cfg.ip){
+    setMsg("正在连接上次绑定的网关…");
+    const ok=await connect({...cfg});
+    if(ok){refreshAll();wsConnect();}
+  }
+})();
+</script>
+</body>
+</html>
